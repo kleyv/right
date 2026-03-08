@@ -6,12 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>right</title>
   </head>
-  <body>
-    <div id="timer">0</div>
-    <div id="goal-sentence"></div>
-    <div id="debug">
-      <div id="wrong-chars-count" style="color: #a4b4c3;"></div>
-    </div>
+  <body style="width: 300px;">
+    <main style="width: 100%;">
+      <div id="stats" style="display: flex;width: inherit;justify-content: space-between;">
+        <div id="timer">0</div>
+        <div id="wpm">wpm</div>
+      </div>
+      <div id="goal-sentence"></div>
+      <div id="debug">
+        <div id="wrong-chars-count" style="color: #a4b4c3;"></div>
+      </div>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1,10 +1,10 @@
 import './style.css';
 
 const goalSentenceElement = document.getElementById('goal-sentence') as HTMLDivElement;
-const goalSentence =  "banquet squirrel equivalent"//equally quarry" // tequila qualified quixotic quick relinquishing piqued acquiescence squander obsequiously q ualifies;
+const goalSentence =  "banquet squirrel equivalent equally quarry tequila qualified quixotic quick relinquishing piqued acquiescence squander obsequiously qualifies" //;
 const timerElement = document.getElementById('timer') as HTMLDivElement;
-// const debugElement = document.getElementById('debug') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
+const wpmElement = document.getElementById('wpm') as HTMLDivElement;
 
 goalSentence.split('').map(char => {
   const span = document.createElement('span');
@@ -33,6 +33,7 @@ function resetRun(timerIntervalId: number){
 
   Array.from(goalSentenceElement.children).forEach(span => {
     (span as HTMLSpanElement).style.color = 'black';
+    (span as HTMLSpanElement).style.backgroundColor = 'transparent';
   });
 }
 window.addEventListener('keydown', (event) => {
@@ -54,21 +55,26 @@ window.addEventListener('keydown', (event) => {
     const currentIndex = typedSentence.length - 1;
     const typedChar = typedSentence[currentIndex];
     const span = goalSentenceElement.children[currentIndex] as HTMLSpanElement;
+    span.style.backgroundColor = "#dce1e5";
 
-    const isCorrectCharacter = typedChar === goalSentence[currentIndex];
+    const isCorrectCharacter = typedChar === goalSentence[currentIndex] && wrongCharactersCount === 0;
     if (isCorrectCharacter) {
       span.style.color = 'green';
       const isFinished = typedSentence.length === goalSentence.length && wrongCharactersCount === 0;
       if (isFinished){
         timerIsOn = false;
+        const wordUnit = goalSentence.length / 5;
+        const wordsPerSecond = wordUnit/timeElapsed; // handle timeElapsed === 0
+        const wordsPerMinute = Math.floor(wordsPerSecond * 60);
+        wpmElement.textContent = `${wordsPerMinute} wpm`;
         resetRun(timerIntervalId);
-       
         return;
       } else if (typedSentence.length === goalSentence.length && wrongCharactersCount > 0){
         return;
       }
     } else {
       span.style.color = 'red';
+      span.style.backgroundColor = '#fbaaaa';
       wrongCharactersCount++;
       wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
     }
@@ -80,13 +86,10 @@ window.addEventListener('keydown', (event) => {
       wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
     }
     span.style.color = 'black';
+    span.style.backgroundColor = 'transparent';
   } else if (isRestart) { // Tab
     event.preventDefault();
     resetRun(timerIntervalId);
-    typedSentence = "";
-    Array.from(goalSentenceElement.children).forEach(span => {
-      (span as HTMLSpanElement).style.color = 'black';
-    });
   } else {
     console.log(`Ignored key: ${event.key}`);
   } 
