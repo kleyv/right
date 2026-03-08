@@ -39,8 +39,6 @@ function resetRun(timerIntervalId: number){
 window.addEventListener('keydown', (event) => {
   console.log(`Key: ${event.key}, Code: ${event.code}`);
   const isPermittedAlphabet = /^[\s\w\W]$/.test(event.key);
-  const isRestart = event.key === 'Tab';
-  const canErase = event.key === 'Backspace' && typedSentence.length > 0;
   if (isPermittedAlphabet) {
     if (!timerIsOn) {
       timerElement.textContent = "0";
@@ -60,8 +58,9 @@ window.addEventListener('keydown', (event) => {
     const isCorrectCharacter = typedChar === goalSentence[currentIndex] && wrongCharactersCount === 0;
     if (isCorrectCharacter) {
       span.style.color = 'green';
+
       const isFinished = typedSentence.length === goalSentence.length && wrongCharactersCount === 0;
-      if (isFinished){
+      if (isFinished) {
         timerIsOn = false;
         const wordUnit = goalSentence.length / 5;
         const wordsPerSecond = wordUnit/timeElapsed; // handle timeElapsed === 0
@@ -69,16 +68,27 @@ window.addEventListener('keydown', (event) => {
         wpmElement.textContent = `${wordsPerMinute} wpm`;
         resetRun(timerIntervalId);
         return;
-      } else if (typedSentence.length === goalSentence.length && wrongCharactersCount > 0){
+      }
+
+      const isAtEndWithErrors = typedSentence.length === goalSentence.length && wrongCharactersCount > 0; 
+      if (isAtEndWithErrors) {
         return;
       }
-    } else {
-      span.style.color = 'red';
-      span.style.backgroundColor = '#fbaaaa';
-      wrongCharactersCount++;
-      wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
+
+      // If not finished, just return (color has already been set)
+      return;
     }
-  } else if (canErase) { // Backspace
+
+    // If incorrect character
+    span.style.color = 'red';
+    span.style.backgroundColor = '#fbaaaa';
+    wrongCharactersCount++;
+    wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
+    return;
+  }
+  
+  const canErase = event.key === 'Backspace' && typedSentence.length > 0;
+  if (canErase) { // Backspace
     const span = goalSentenceElement.children[typedSentence.length - 1] as HTMLSpanElement;
     typedSentence = typedSentence.slice(0, -1);
     if (span.style.color === "red"){
@@ -87,10 +97,15 @@ window.addEventListener('keydown', (event) => {
     }
     span.style.color = 'black';
     span.style.backgroundColor = 'transparent';
-  } else if (isRestart) { // Tab
+    return;
+  }
+  
+  const isRestart = event.key === 'Tab';
+  if (isRestart) { // Tab
     event.preventDefault();
     resetRun(timerIntervalId);
-  } else {
-    console.log(`Ignored key: ${event.key}`);
-  } 
+    return;
+  }
+
+  console.log(`Ignored key: ${event.key}`);
 })
