@@ -19,6 +19,7 @@ let wrongCharactersCount = 0;
 let timerIsOn = false;
 let timeElapsed = 0;
 let timerIntervalId: number;
+let lastCorrectCharacterIndex = -1;
 
 function resetRun(timerIntervalId: number){
   // clear timer
@@ -29,6 +30,7 @@ function resetRun(timerIntervalId: number){
   // clear sentence
   typedSentence = "";
   wrongCharactersCount = 0;
+  lastCorrectCharacterIndex = -1;
   wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
 
   Array.from(goalSentenceElement.children).forEach(span => {
@@ -36,8 +38,75 @@ function resetRun(timerIntervalId: number){
     (span as HTMLSpanElement).style.backgroundColor = 'transparent';
   });
 }
+
+function eraseLastCharacter() {
+  if (typedSentence.length === 0) return;
+
+  const lastIndex = typedSentence.length - 1;
+  const span = goalSentenceElement.children[lastIndex] as HTMLSpanElement;
+  typedSentence = typedSentence.slice(0, -1);
+
+  if (span.style.color === 'red') {
+    wrongCharactersCount--;
+    wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
+  }
+  
+  if(span.style.color === "green"){
+    lastCorrectCharacterIndex--;
+  }
+
+  span.style.color = 'black';
+  span.style.backgroundColor = 'transparent';
+}
 window.addEventListener('keydown', (event) => {
-  console.log(`Key: ${event.key}, Code: ${event.code}`);
+  // console.log(event);
+  // console.log(`Key: ${event.key}, Code: ${event.code}`);
+  const { ctrlKey } = event;
+
+  const isEraseChunk = ctrlKey && event.key === 'Backspace';
+  if (isEraseChunk) { // works but smells funny
+    event.preventDefault();
+    if (typedSentence.length === 0) return;
+
+    // delete till last correct character
+    if (lastCorrectCharacterIndex < typedSentence.length - 1){
+      while (
+        typedSentence.length > 0 &&
+        lastCorrectCharacterIndex < typedSentence.length - 1
+      ){
+        eraseLastCharacter();
+      }
+      return;
+    }
+    // If we have multiple trailing spaces, shrink them to a single space
+    let trailingSpaces = 0;
+    while (
+      trailingSpaces < typedSentence.length &&
+      typedSentence[typedSentence.length - 1 - trailingSpaces] === ' '
+    ) {
+      trailingSpaces++;
+    }
+    if (trailingSpaces > 1) {
+      for (let i = 0; i < trailingSpaces - 1; i++) {
+        eraseLastCharacter();
+      }
+      return; // first Ctrl+Backspace: "   " -> " "
+    }
+
+    // Otherwise, delete the previous word (keeping one space before it)
+    if (typedSentence.length > 0 &&
+        typedSentence[typedSentence.length - 1] === ' ') {
+      eraseLastCharacter(); // remove the single trailing space
+    }
+    while (
+      typedSentence.length > 0 &&
+      typedSentence[typedSentence.length - 1] !== ' '
+    ) {
+      eraseLastCharacter(); // remove word chars until previous space/start
+    }
+    return;
+  }
+
   const isPermittedAlphabet = /^[\s\w\W]$/.test(event.key);
   if (isPermittedAlphabet) {
     if (!timerIsOn) {
@@ -50,14 +119,17 @@ window.addEventListener('keydown', (event) => {
     }
 
     typedSentence += event.key;
+    
     const currentIndex = typedSentence.length - 1;
     const typedChar = typedSentence[currentIndex];
     const span = goalSentenceElement.children[currentIndex] as HTMLSpanElement;
-    span.style.backgroundColor = "#dce1e5";
+    console.log({typedSentence, currentIndex, typedChar});
 
     const isCorrectCharacter = typedChar === goalSentence[currentIndex] && wrongCharactersCount === 0;
     if (isCorrectCharacter) {
+      lastCorrectCharacterIndex++;
       span.style.color = 'green';
+      span.style.backgroundColor = "#dce1e5";
 
       const isFinished = typedSentence.length === goalSentence.length && wrongCharactersCount === 0;
       if (isFinished) {
@@ -89,14 +161,7 @@ window.addEventListener('keydown', (event) => {
   
   const canErase = event.key === 'Backspace' && typedSentence.length > 0;
   if (canErase) { // Backspace
-    const span = goalSentenceElement.children[typedSentence.length - 1] as HTMLSpanElement;
-    typedSentence = typedSentence.slice(0, -1);
-    if (span.style.color === "red"){
-      wrongCharactersCount--;
-      wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
-    }
-    span.style.color = 'black';
-    span.style.backgroundColor = 'transparent';
+    eraseLastCharacter();
     return;
   }
   
