@@ -22,7 +22,7 @@ const state = {
 
 goalSentence.split('').map(char => {
   const span = document.createElement('span');
-  span.style.fontFamily = 'monospace';
+  span.style.fontFamily = 'monospace'; // already specified on the css
   span.textContent = char;
   goalSentenceElement.appendChild(span);
   return span;
@@ -38,10 +38,9 @@ function resetRun(){
   state.lastCorrectCharacterIndex = -1;
   state.charStates = new Array(goalSentence.length).fill("pending");
   renderWrongCount()
-
-  Array.from(goalSentenceElement.children).forEach(span => {
-    (span as HTMLSpanElement).style.color = 'black';
-    (span as HTMLSpanElement).style.backgroundColor = 'transparent';
+  
+  state.charStates.forEach((_, index) => {
+    renderCharacter(index);
   });
 }
 
@@ -56,7 +55,7 @@ function eraseLastCharacter() {
   }
 
   state.charStates[lastIndex] = "pending";
-  renderWrongCount();
+  renderWrongCount(); // could render only when lastIndex was wrong
   renderCharacter(lastIndex);
 }
 function renderTimer(){
