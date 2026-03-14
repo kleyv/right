@@ -29,8 +29,8 @@ goalSentence.split('').map(char => {
 })
 
 
-function resetRun(timerIntervalId: number){
-  clearInterval(timerIntervalId);
+function resetRun(){
+  clearInterval(state.timerIntervalId);
   state.timerIsOn = false;
   state.timeElapsed = 0;
   renderTimer();
@@ -129,7 +129,6 @@ window.addEventListener('keydown', (event) => {
   const isPermittedAlphabet = /^[\s\w\W]$/.test(event.key);
   if (isPermittedAlphabet) {
     if (!state.timerIsOn) {
-      // timerElement.textContent = "0";
       state.timerIsOn = true;
       state.timerIntervalId = setInterval(() => {
         state.timeElapsed++;
@@ -153,7 +152,7 @@ window.addEventListener('keydown', (event) => {
         const wordsPerSecond = wordUnit/state.timeElapsed; // handle timeElapsed === 0
         const wordsPerMinute = Math.floor(wordsPerSecond * 60);
         wpmElement.textContent = `${wordsPerMinute} wpm`;
-        resetRun(state.timerIntervalId);
+        resetRun();
         return;
       }
       
@@ -168,7 +167,7 @@ window.addEventListener('keydown', (event) => {
     
     state.charStates[currentIndex] = "wrong";
     renderCharacter(state.typedSentence.length - 1);
-    wrongCharsCountElement.textContent = `Wrong Chars: ${state.getWrongCharactersCount()}`;
+    renderWrongCount();
     return;
   }
   
@@ -181,7 +180,7 @@ window.addEventListener('keydown', (event) => {
   const isRestart = event.key === 'Tab';
   if (isRestart) { // Tab
     event.preventDefault();
-    resetRun(state.timerIntervalId);
+    resetRun();
     return;
   }
 
