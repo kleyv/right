@@ -16,6 +16,16 @@
       <div id="debug">
         <div id="wrong-chars-count" style="color: #a4b4c3;">Wrong Chars: 0</div>
       </div>
+      <div id="settings">
+        <form action="" style="color: #a4b4c3;">
+          <label for="mistake-mode">On mistake:</label>
+          <select name="modes" id="mistake-mode" style="color: #a4b4c3;">
+            <option value="continue" selected="selected">continue</option>
+            <option value="restartWord">restart word</option>
+            <option value="stop">stop</option>
+          </select>
+        </form>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

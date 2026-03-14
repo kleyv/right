@@ -5,7 +5,11 @@ const goalSentence =  "banquet squirrel equivalent equally quarry tequila qualif
 const timerElement = document.getElementById('timer') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
 const wpmElement = document.getElementById('wpm') as HTMLDivElement;
+const mistakeModeElement = document.getElementById('mistake-mode') as HTMLSelectElement;
 
+
+
+type MistakeMode = "continue" | "restartWord" | "stop"; //"restartRun" 
 type CharState = "pending" | "wrong" | "correct";
 const state = {
   typedSentence: "",
@@ -16,9 +20,14 @@ const state = {
   timerIntervalId: 0,
   getWrongCharactersCount(){
     return this.charStates.filter(state => state === "wrong").length;
-  } 
+  },
+  mistakeMode: "continue" as MistakeMode,
+  isLastCharacterCorrect: true
 }
 
+mistakeModeElement.addEventListener('change', () => {
+  state.mistakeMode = mistakeModeElement.value as MistakeMode;
+});
 
 goalSentence.split('').map(char => {
   const span = document.createElement('span');
@@ -80,7 +89,14 @@ function renderCharacter(index: number){
     span.style.backgroundColor = "transparent";
 
   }
+  
+  if (state.isLastCharacterCorrect) {
+    document.querySelector("body")!.style.backgroundColor = "transparent";
+  } else {
+    document.querySelector("body")!.style.backgroundColor = "#ffecec";
+  }
 }
+
 window.addEventListener('keydown', (event) => {
   const { ctrlKey } = event;
 
@@ -141,6 +157,7 @@ window.addEventListener('keydown', (event) => {
     
     const isCorrectCharacter = typedChar === goalSentence[currentIndex] && state.getWrongCharactersCount() === 0;
     if (isCorrectCharacter) {
+      state.isLastCharacterCorrect = true;
       state.charStates[currentIndex] = "correct";
       state.lastCorrectCharacterIndex++;
       
@@ -163,10 +180,29 @@ window.addEventListener('keydown', (event) => {
       renderCharacter(state.typedSentence.length - 1);
       return;
     }
-    
+
+    state.isLastCharacterCorrect = false;
     state.charStates[currentIndex] = "wrong";
     renderCharacter(state.typedSentence.length - 1);
     renderWrongCount();
+    switch (state.mistakeMode) {
+      case "stop":
+        eraseLastCharacter();
+        break;
+      case "restartWord":
+        eraseLastCharacter();
+        while (
+          state.typedSentence.length > 0 &&
+          state.typedSentence[state.typedSentence.length - 1] !== ' '
+        ) {
+          eraseLastCharacter(); // remove word chars until previous space/start
+        }
+        break;
+      case "continue":
+        break;
+      default:
+        break;
+    }
     return;
   }
   

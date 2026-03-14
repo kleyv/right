@@ -6,4 +6,5 @@ body {
   height: 100vh;
   margin: 0 auto;
   font-family: monospace;
+  line-height: 1.25rem;;
 }
