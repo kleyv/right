@@ -6,6 +6,20 @@ const timerElement = document.getElementById('timer') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
 const wpmElement = document.getElementById('wpm') as HTMLDivElement;
 
+type CharState = "pending" | "wrong" | "correct";
+const state = {
+  typedSentence: "",
+  timerIsOn: false,
+  timeElapsed: 0,
+  lastCorrectCharacterIndex: -1,
+  charStates: [] as CharState[],
+  timerIntervalId: 0,
+  getWrongCharactersCount(){
+    return this.charStates.filter(state => state === "wrong").length;
+  } 
+}
+
+
 goalSentence.split('').map(char => {
   const span = document.createElement('span');
   span.style.fontFamily = 'monospace';
@@ -14,24 +28,16 @@ goalSentence.split('').map(char => {
   return span;
 })
 
-let typedSentence = "";
-let wrongCharactersCount = 0;
-let timerIsOn = false;
-let timeElapsed = 0;
-let timerIntervalId: number;
-let lastCorrectCharacterIndex = -1;
 
 function resetRun(timerIntervalId: number){
-  // clear timer
   clearInterval(timerIntervalId);
-  timerIsOn = false;
-  timerElement.textContent = timeElapsed.toString();
-  timeElapsed = 0;
-  // clear sentence
-  typedSentence = "";
-  wrongCharactersCount = 0;
-  lastCorrectCharacterIndex = -1;
-  wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
+  state.timerIsOn = false;
+  state.timeElapsed = 0;
+  renderTimer();
+  state.typedSentence = "";
+  state.lastCorrectCharacterIndex = -1;
+  state.charStates = new Array(goalSentence.length).fill("pending");
+  renderWrongCount()
 
   Array.from(goalSentenceElement.children).forEach(span => {
     (span as HTMLSpanElement).style.color = 'black';
@@ -40,49 +46,63 @@ function resetRun(timerIntervalId: number){
 }
 
 function eraseLastCharacter() {
-  if (typedSentence.length === 0) return;
+  if (state.typedSentence.length === 0) return;
 
-  const lastIndex = typedSentence.length - 1;
-  const span = goalSentenceElement.children[lastIndex] as HTMLSpanElement;
-  typedSentence = typedSentence.slice(0, -1);
+  const lastIndex = state.typedSentence.length - 1;
+  state.typedSentence = state.typedSentence.slice(0, -1);
 
-  if (span.style.color === 'red') {
-    wrongCharactersCount--;
-    wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
-  }
-  
-  if(span.style.color === "green"){
-    lastCorrectCharacterIndex--;
+  if(state.charStates[lastIndex] === "correct"){
+    state.lastCorrectCharacterIndex--;
   }
 
-  span.style.color = 'black';
-  span.style.backgroundColor = 'transparent';
+  state.charStates[lastIndex] = "pending";
+  renderWrongCount();
+  renderCharacter(lastIndex);
+}
+function renderTimer(){
+  timerElement.textContent = state.timeElapsed.toString();
+}
+function renderWrongCount(){
+  wrongCharsCountElement.textContent = `Wrong Chars: ${state.getWrongCharactersCount()}`;
+}
+function renderCharacter(index: number){
+  console.log(state.charStates.length);
+  console.log(index === state.typedSentence.length -1);
+  const span = goalSentenceElement.children[index] as HTMLSpanElement;
+  const status = state.charStates[index] ?? "pending";
+  if (status === "correct"){
+    span.style.color = "green";
+    span.style.backgroundColor = "#dce1e5";
+  } else if (status === "wrong"){
+    span.style.color = "red";
+    span.style.backgroundColor = '#fbaaaa';
+  } else {
+    span.style.color = "black";
+    span.style.backgroundColor = "transparent";
+
+  }
 }
 window.addEventListener('keydown', (event) => {
-  // console.log(event);
-  // console.log(`Key: ${event.key}, Code: ${event.code}`);
   const { ctrlKey } = event;
 
   const isEraseChunk = ctrlKey && event.key === 'Backspace';
   if (isEraseChunk) { // works but smells funny
     event.preventDefault();
-    if (typedSentence.length === 0) return;
+    if (state.typedSentence.length === 0) return;
 
-    // delete till last correct character
-    if (lastCorrectCharacterIndex < typedSentence.length - 1){
+    if (state.lastCorrectCharacterIndex < state.typedSentence.length - 1){
       while (
-        typedSentence.length > 0 &&
-        lastCorrectCharacterIndex < typedSentence.length - 1
+        state.typedSentence.length > 0 &&
+        state.lastCorrectCharacterIndex < state.typedSentence.length - 1
       ){
         eraseLastCharacter();
       }
       return;
     }
-    // If we have multiple trailing spaces, shrink them to a single space
     let trailingSpaces = 0;
     while (
-      trailingSpaces < typedSentence.length &&
-      typedSentence[typedSentence.length - 1 - trailingSpaces] === ' '
+      trailingSpaces < state.typedSentence.length &&
+      state.typedSentence[state.typedSentence.length - 1 - trailingSpaces] === ' '
     ) {
       trailingSpaces++;
     }
@@ -93,14 +113,13 @@ window.addEventListener('keydown', (event) => {
       return; // first Ctrl+Backspace: "   " -> " "
     }
 
-    // Otherwise, delete the previous word (keeping one space before it)
-    if (typedSentence.length > 0 &&
-        typedSentence[typedSentence.length - 1] === ' ') {
+    if (state.typedSentence.length > 0 &&
+        state.typedSentence[state.typedSentence.length - 1] === ' ') {
       eraseLastCharacter(); // remove the single trailing space
     }
     while (
-      typedSentence.length > 0 &&
-      typedSentence[typedSentence.length - 1] !== ' '
+      state.typedSentence.length > 0 &&
+      state.typedSentence[state.typedSentence.length - 1] !== ' '
     ) {
       eraseLastCharacter(); // remove word chars until previous space/start
     }
@@ -109,57 +128,51 @@ window.addEventListener('keydown', (event) => {
 
   const isPermittedAlphabet = /^[\s\w\W]$/.test(event.key);
   if (isPermittedAlphabet) {
-    if (!timerIsOn) {
-      timerElement.textContent = "0";
-      timerIsOn = true;
-      timerIntervalId = setInterval(() => {
-        timeElapsed++;
-        timerElement.textContent = timeElapsed.toString();
+    if (!state.timerIsOn) {
+      // timerElement.textContent = "0";
+      state.timerIsOn = true;
+      state.timerIntervalId = setInterval(() => {
+        state.timeElapsed++;
+        renderTimer();
       }, 1000)
     }
 
-    typedSentence += event.key;
+    state.typedSentence += event.key;
+    const currentIndex = state.typedSentence.length - 1;
+    const typedChar = state.typedSentence[currentIndex];
     
-    const currentIndex = typedSentence.length - 1;
-    const typedChar = typedSentence[currentIndex];
-    const span = goalSentenceElement.children[currentIndex] as HTMLSpanElement;
-    console.log({typedSentence, currentIndex, typedChar});
-
-    const isCorrectCharacter = typedChar === goalSentence[currentIndex] && wrongCharactersCount === 0;
+    const isCorrectCharacter = typedChar === goalSentence[currentIndex] && state.getWrongCharactersCount() === 0;
     if (isCorrectCharacter) {
-      lastCorrectCharacterIndex++;
-      span.style.color = 'green';
-      span.style.backgroundColor = "#dce1e5";
-
-      const isFinished = typedSentence.length === goalSentence.length && wrongCharactersCount === 0;
+      state.charStates[currentIndex] = "correct";
+      state.lastCorrectCharacterIndex++;
+      
+      const isFinished = state.typedSentence.length === goalSentence.length && state.getWrongCharactersCount() === 0;
       if (isFinished) {
-        timerIsOn = false;
+        state.timerIsOn = false;
         const wordUnit = goalSentence.length / 5;
-        const wordsPerSecond = wordUnit/timeElapsed; // handle timeElapsed === 0
+        const wordsPerSecond = wordUnit/state.timeElapsed; // handle timeElapsed === 0
         const wordsPerMinute = Math.floor(wordsPerSecond * 60);
         wpmElement.textContent = `${wordsPerMinute} wpm`;
-        resetRun(timerIntervalId);
+        resetRun(state.timerIntervalId);
         return;
       }
-
-      const isAtEndWithErrors = typedSentence.length === goalSentence.length && wrongCharactersCount > 0; 
+      
+      const isAtEndWithErrors = state.typedSentence.length === goalSentence.length && state.getWrongCharactersCount() > 0; 
       if (isAtEndWithErrors) {
         return;
       }
-
-      // If not finished, just return (color has already been set)
+      
+      renderCharacter(state.typedSentence.length - 1);
       return;
     }
-
-    // If incorrect character
-    span.style.color = 'red';
-    span.style.backgroundColor = '#fbaaaa';
-    wrongCharactersCount++;
-    wrongCharsCountElement.textContent = `Wrong Chars: ${wrongCharactersCount}`;
+    
+    state.charStates[currentIndex] = "wrong";
+    renderCharacter(state.typedSentence.length - 1);
+    wrongCharsCountElement.textContent = `Wrong Chars: ${state.getWrongCharactersCount()}`;
     return;
   }
   
-  const canErase = event.key === 'Backspace' && typedSentence.length > 0;
+  const canErase = event.key === 'Backspace' && state.typedSentence.length > 0;
   if (canErase) { // Backspace
     eraseLastCharacter();
     return;
@@ -168,7 +181,7 @@ window.addEventListener('keydown', (event) => {
   const isRestart = event.key === 'Tab';
   if (isRestart) { // Tab
     event.preventDefault();
-    resetRun(timerIntervalId);
+    resetRun(state.timerIntervalId);
     return;
   }
 
