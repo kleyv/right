@@ -6,25 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>right</title>
   </head>
-  <body style="width: 300px;">
-    <main style="width: 100%;">
-      <div id="stats" style="display: flex;width: inherit;justify-content: space-between;">
+  <body>
+    <main>
+      <div id="stats">
         <div id="timer">0</div>
         <div id="wpm">wpm</div>
       </div>
       <div id="goal-sentence"></div>
-      <div id="debug">
-        <div id="wrong-chars-count" style="color: #a4b4c3;">Wrong Chars: 0</div>
+      <div id="debug" class="muted">
+        <div id="wrong-chars-count">Wrong Chars: 0</div>
       </div>
-      <div id="settings">
-        <form action="" style="color: #a4b4c3;">
+      <div id="settings" class="muted">
+        <form action="">
           <label for="mistake-mode">On mistake:</label>
-          <select name="modes" id="mistake-mode" style="color: #a4b4c3;">
+          <select name="modes" id="mistake-mode">
             <option value="continue" selected="selected">continue</option>
             <option value="restartWord">restart word</option>
             <option value="stop">stop</option>
           </select>
         </form>
+        <span>
+          <kbd>Tab</kbd> to restart run.
+        </span>
+
       </div>
     </main>
     <script type="module" src="/src/main.ts"></script>

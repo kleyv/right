@@ -31,7 +31,6 @@ mistakeModeElement.addEventListener('change', () => {
 
 goalSentence.split('').map(char => {
   const span = document.createElement('span');
-  span.style.fontFamily = 'monospace'; // already specified on the css
   span.textContent = char;
   goalSentenceElement.appendChild(span);
   return span;
