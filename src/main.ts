@@ -1,13 +1,28 @@
 import './style.css';
 
 const goalSentenceElement = document.getElementById('goal-sentence') as HTMLDivElement;
-const goalSentence =  "banquet squirrel equivalent equally quarry tequila qualified quixotic quick relinquishing piqued acquiescence squander obsequiously qualifies" //;
 const timerElement = document.getElementById('timer') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
 const wpmElement = document.getElementById('wpm') as HTMLDivElement;
 const mistakeModeElement = document.getElementById('mistake-mode') as HTMLSelectElement;
 
+const response = await fetch('/src/en_1k.txt');
+const text = await response.text();
+const words = text
+  .split('\n')
+  
+const WORD_COUNT = 50;
+let goalSentence = words.sort(() => Math.random() - 0.5).slice(0, WORD_COUNT).join(" ");
 
+function renderGoalSentence() {
+  goalSentenceElement.innerHTML = "";
+  goalSentence.split('').forEach(char => {
+    const span = document.createElement('span');
+    span.textContent = char;
+    goalSentenceElement.appendChild(span);
+  });
+}
+renderGoalSentence();
 
 type MistakeMode = "continue" | "restartWord" | "stop"; //"restartRun" 
 type CharState = "pending" | "wrong" | "correct";
@@ -28,14 +43,6 @@ const state = {
 mistakeModeElement.addEventListener('change', () => {
   state.mistakeMode = mistakeModeElement.value as MistakeMode;
 });
-
-goalSentence.split('').map(char => {
-  const span = document.createElement('span');
-  span.textContent = char;
-  goalSentenceElement.appendChild(span);
-  return span;
-})
-
 
 function resetRun(){
   clearInterval(state.timerIntervalId);
@@ -168,6 +175,8 @@ window.addEventListener('keydown', (event) => {
         const wordsPerMinute = Math.floor(wordsPerSecond * 60);
         wpmElement.textContent = `${wordsPerMinute} wpm`;
         resetRun();
+        goalSentence = words.sort(() => Math.random() - 0.5).slice(0, WORD_COUNT).join(" ");
+        renderGoalSentence();
         return;
       }
       
