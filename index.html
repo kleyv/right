@@ -8,11 +8,11 @@
   </head>
   <body>
     <main>
+      <div id="goal-sentence"></div>
       <div id="stats">
         <div id="timer">0</div>
         <div id="wpm">wpm</div>
       </div>
-      <div id="goal-sentence"></div>
       <div id="debug" class="muted">
         <div id="wrong-chars-count">Wrong Chars: 0</div>
       </div>
@@ -28,7 +28,11 @@
         <span>
           <kbd>Tab</kbd> to restart run.
         </span>
-
+        <br>
+        <details id="history-panel" class="muted">
+          <summary>History</summary>
+          <div id="history"></div>
+        </details>
       </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
