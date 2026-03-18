@@ -5,6 +5,7 @@ const timerElement = document.getElementById('timer') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
 const wpmElement = document.getElementById('wpm') as HTMLDivElement;
 const mistakeModeElement = document.getElementById('mistake-mode') as HTMLSelectElement;
+const historyElement = document.getElementById('history') as HTMLDetailsElement;
 
 const response = await fetch('/src/en_1k.txt');
 const text = await response.text();
@@ -24,10 +25,12 @@ function renderGoalSentence() {
 }
 renderGoalSentence();
 
-type Run = Array<[string,number]>;
+type RunSample = readonly [key: string, delayMs: number];
+type Run = RunSample[];
 type Entry = {
   timestamp: number,
-  run: Run
+  run: Run,
+  goalSentenceLength: number,
 }
 
 let entriesData = localStorage.getItem('rightEntries');
@@ -40,24 +43,29 @@ if (!entriesData){
 
 
 function renderEntries(){
-  const sortedEntries = entries.sort((a: Entry, b: Entry) => b.timestamp - a.timestamp).slice(0,10);
-  const rows = sortedEntries.map((entry: Entry) => {
-    const p = document.createElement('p');
-    const totalTime = entry.run.reduce((acc, agg) => acc + agg[1],0);
-    const wpm = Math.round((entry.run.length / (totalTime/1000)) * 60) / 5;
-    const formattedDate = new Date(entry.timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hour12: false,
-      minute: '2-digit',
-      second: '2-digit',
+  if(entries.length === 0){
+    historyElement.innerHTML = "<p>No entries yet</p>";
+  } else {
+    const sortedEntries = Array.from(entries).sort((a: Entry, b: Entry) => b.timestamp - a.timestamp).slice(0,10);
+    const rows = sortedEntries.map((entry: Entry) => {
+      const p = document.createElement('p');
+      // const totalTime = entry.run.reduce((acc, agg) => acc + agg[1],0);
+      // const wpm = Math.round((entry.run.length / (totalTime/1000)) * 60) / 5;
+      const wpm  = computeGoalWpm(entry);
+      const formattedDate = new Date(entry.timestamp).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hour12: false,
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      p.innerText = `${formattedDate}\t|\t${wpm}`;
+      return p;
     });
-    p.innerText = `${formattedDate}\t|\t${wpm}`;
-    return p;
-  });
-  document.getElementById('history')!.innerHTML = rows.map(row => row.outerHTML).join('\n');
+    historyElement.innerHTML = rows.map(row => row.outerHTML).join('\n');
+  }
 }
 
 renderEntries();
@@ -74,12 +82,15 @@ const state = {
   getWrongCharactersCount(){
     return this.charStates.filter(state => state === "wrong").length;
   },
-  mistakeMode: "continue" as MistakeMode,
+  mistakeMode: "restartWord" as MistakeMode,
   isLastCharacterCorrect: true
 }
 
+mistakeModeElement.value = state.mistakeMode;
 mistakeModeElement.addEventListener('change', () => {
   state.mistakeMode = mistakeModeElement.value as MistakeMode;
+  // update seleteted value in the select element
+  mistakeModeElement.value = state.mistakeMode;
 });
 
 function resetRun(){
@@ -143,6 +154,17 @@ function renderCharacter(index: number){
 let keyStartTime: Date;
 function getKeyTimerTime(){
   return Date.now() - keyStartTime!.getTime();
+}
+
+function computeGoalWpm(entry: Entry): number {
+  const totalTimeMs = entry.run.reduce((acc, [, delayMs]) => acc + delayMs, 0);
+  if (totalTimeMs <= 0) return 0;
+  const words = entry.goalSentenceLength / 5;
+  
+  const totalMinutes = totalTimeMs / 1000 / 60;
+  if (totalMinutes <= 0) return 0;
+  
+  return Math.round(words / totalMinutes);
 }
 
 window.addEventListener('keydown', (event) => {
@@ -217,12 +239,19 @@ window.addEventListener('keydown', (event) => {
       
       const isFinished = state.typedSentence.length === goalSentence.length && state.getWrongCharactersCount() === 0;
       if (isFinished) {
-        entries.push({timestamp: Date.now(), run});
+        const goalSentenceLength = goalSentence.length;
+        state.timerIsOn = false;
+        // const totalTime = run.reduce((acc, [_, delay]) => acc + delay, 0);
+        const entry = {timestamp: Date.now(), run, goalSentenceLength};
+        entries.push(entry);
         localStorage.setItem('rightEntries',JSON.stringify(entries));
         renderEntries();
-        state.timerIsOn = false;
-        const totalTime = run.reduce((acc, agg) => acc + agg[1], 0);
-        const wpm = Math.round((run.length / (totalTime/1000)) * 60) / 5;
+        
+        // const totalWords =  goalSentence.length / 5;
+        // const minutesTaken = totalTime / 1000 / 60;
+        // const wpm = totalWords / minutesTaken
+        // const wpm = Math.round((goalSentence.length / (totalTime/1000)) * 60) / 5;
+        const wpm = computeGoalWpm(entry);
         wpmElement.textContent = `${wpm} wpm`;
         resetRun();
         goalSentence = words.sort(() => Math.random() - 0.5).slice(0, WORD_COUNT).join(" ");
