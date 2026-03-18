@@ -1,5 +1,18 @@
 import './style.css';
 
+// Types
+type RunSample = readonly [key: string, delayMs: number];
+type Run = RunSample[];
+type Entry = {
+  timestamp: number,
+  run: Run,
+  goalSentenceLength: number,
+}
+// "continue" mistake mode needs to be rethought
+type MistakeMode = "continue" | "restartWord" | "stop"; //"restartRun" 
+type CharState = "pending" | "wrong" | "correct";
+
+// DOM elements
 const goalSentenceElement = document.getElementById('goal-sentence') as HTMLDivElement;
 const timerElement = document.getElementById('timer') as HTMLDivElement;
 const wrongCharsCountElement = document.getElementById('wrong-chars-count') as HTMLDivElement;
@@ -7,6 +20,7 @@ const wpmElement = document.getElementById('wpm') as HTMLDivElement;
 const mistakeModeElement = document.getElementById('mistake-mode') as HTMLSelectElement;
 const historyElement = document.getElementById('history') as HTMLDetailsElement;
 
+// Word list, goal sentence
 const response = await fetch('/src/en_1k.txt');
 const text = await response.text();
 const words = text
@@ -15,63 +29,7 @@ const words = text
 const WORD_COUNT = 50;
 let goalSentence = words.sort(() => Math.random() - 0.5).slice(0, WORD_COUNT).join(" ");
 
-function renderGoalSentence() {
-  goalSentenceElement.innerHTML = "";
-  goalSentence.split('').forEach(char => {
-    const span = document.createElement('span');
-    span.textContent = char;
-    goalSentenceElement.appendChild(span);
-  });
-}
-renderGoalSentence();
-
-type RunSample = readonly [key: string, delayMs: number];
-type Run = RunSample[];
-type Entry = {
-  timestamp: number,
-  run: Run,
-  goalSentenceLength: number,
-}
-
-let entriesData = localStorage.getItem('rightEntries');
-let entries: Entry[];
-if (!entriesData){
-  entries = [];
-} else {
-  entries = JSON.parse(entriesData);
-}
-
-
-function renderEntries(){
-  if(entries.length === 0){
-    historyElement.innerHTML = "<p>No entries yet</p>";
-  } else {
-    const sortedEntries = Array.from(entries).sort((a: Entry, b: Entry) => b.timestamp - a.timestamp).slice(0,10);
-    const rows = sortedEntries.map((entry: Entry) => {
-      const p = document.createElement('p');
-      // const totalTime = entry.run.reduce((acc, agg) => acc + agg[1],0);
-      // const wpm = Math.round((entry.run.length / (totalTime/1000)) * 60) / 5;
-      const wpm  = computeGoalWpm(entry);
-      const formattedDate = new Date(entry.timestamp).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        hour12: false,
-        minute: '2-digit',
-        second: '2-digit',
-      });
-      p.innerText = `${formattedDate}\t|\t${wpm}`;
-      return p;
-    });
-    historyElement.innerHTML = rows.map(row => row.outerHTML).join('\n');
-  }
-}
-
-renderEntries();
-let run: Run = [];
-type MistakeMode = "continue" | "restartWord" | "stop"; //"restartRun" 
-type CharState = "pending" | "wrong" | "correct";
+// State
 const state = {
   typedSentence: "",
   timerIsOn: false,
@@ -86,42 +44,41 @@ const state = {
   isLastCharacterCorrect: true
 }
 
-mistakeModeElement.value = state.mistakeMode;
-mistakeModeElement.addEventListener('change', () => {
-  state.mistakeMode = mistakeModeElement.value as MistakeMode;
-  // update seleteted value in the select element
-  mistakeModeElement.value = state.mistakeMode;
-});
-
-function resetRun(){
-  clearInterval(state.timerIntervalId);
-  run = [];
-  state.timerIsOn = false;
-  state.timeElapsed = 0;
-  renderTimer();
-  state.typedSentence = "";
-  state.lastCorrectCharacterIndex = -1;
-  state.charStates = new Array(goalSentence.length).fill("pending");
-  renderWrongCount()
-  
-  state.charStates.forEach((_, index) => {
-    renderCharacter(index);
-  });
+// Run timing
+let run: Run = [];
+let keyStartTime: Date;
+function getKeyTimerTime(){
+  return Date.now() - keyStartTime!.getTime();
 }
 
-function eraseLastCharacter() {
-  if (state.typedSentence.length === 0) return;
+// Entries Load
+let entriesData = localStorage.getItem('rightEntries');
+let entries: Entry[];
+if (!entriesData){
+  entries = [];
+} else {
+  entries = JSON.parse(entriesData);
+}
 
-  const lastIndex = state.typedSentence.length - 1;
-  state.typedSentence = state.typedSentence.slice(0, -1);
+function computeGoalWpm(entry: Entry): number {
+  const totalTimeMs = entry.run.reduce((acc, [, delayMs]) => acc + delayMs, 0);
+  if (totalTimeMs <= 0) return 0;
+  const words = entry.goalSentenceLength / 5;
+  
+  const totalMinutes = totalTimeMs / 1000 / 60;
+  if (totalMinutes <= 0) return 0;
+  
+  return Math.round(words / totalMinutes);
+}
 
-  if(state.charStates[lastIndex] === "correct"){
-    state.lastCorrectCharacterIndex--;
-  }
-
-  state.charStates[lastIndex] = "pending";
-  renderWrongCount(); // could render only when lastIndex was wrong
-  renderCharacter(lastIndex);
+// Render helpers
+function renderGoalSentence() {
+  goalSentenceElement.innerHTML = "";
+  goalSentence.split('').forEach(char => {
+    const span = document.createElement('span');
+    span.textContent = char;
+    goalSentenceElement.appendChild(span);
+  });
 }
 function renderTimer(){
   timerElement.textContent = state.timeElapsed.toString();
@@ -150,23 +107,77 @@ function renderCharacter(index: number){
     document.querySelector("body")!.style.backgroundColor = "#ffecec";
   }
 }
-
-let keyStartTime: Date;
-function getKeyTimerTime(){
-  return Date.now() - keyStartTime!.getTime();
+function renderEntries(){
+  if(entries.length === 0){
+    historyElement.innerHTML = "<p>No entries yet</p>";
+  } else {
+    const sortedEntries = Array.from(entries).sort((a: Entry, b: Entry) => b.timestamp - a.timestamp).slice(0,10);
+    const rows = sortedEntries.map((entry: Entry) => {
+      const p = document.createElement('p');
+      // const totalTime = entry.run.reduce((acc, agg) => acc + agg[1],0);
+      // const wpm = Math.round((entry.run.length / (totalTime/1000)) * 60) / 5;
+      const wpm  = computeGoalWpm(entry);
+      const formattedDate = new Date(entry.timestamp).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hour12: false,
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      p.innerText = `${formattedDate}\t|\t${wpm}`;
+      return p;
+    });
+    historyElement.innerHTML = rows.map(row => row.outerHTML).join('\n');
+  }
 }
 
-function computeGoalWpm(entry: Entry): number {
-  const totalTimeMs = entry.run.reduce((acc, [, delayMs]) => acc + delayMs, 0);
-  if (totalTimeMs <= 0) return 0;
-  const words = entry.goalSentenceLength / 5;
+
+// Run control
+function resetRun(){
+  clearInterval(state.timerIntervalId);
+  run = [];
+  state.timerIsOn = false;
+  state.timeElapsed = 0;
+  renderTimer();
+  state.typedSentence = "";
+  state.lastCorrectCharacterIndex = -1;
+  state.charStates = new Array(goalSentence.length).fill("pending");
+  renderWrongCount()
   
-  const totalMinutes = totalTimeMs / 1000 / 60;
-  if (totalMinutes <= 0) return 0;
-  
-  return Math.round(words / totalMinutes);
+  state.charStates.forEach((_, index) => {
+    renderCharacter(index);
+  });
+}
+function eraseLastCharacter() {
+  if (state.typedSentence.length === 0) return;
+
+  const lastIndex = state.typedSentence.length - 1;
+  state.typedSentence = state.typedSentence.slice(0, -1);
+
+  if(state.charStates[lastIndex] === "correct"){
+    state.lastCorrectCharacterIndex--;
+  }
+
+  state.charStates[lastIndex] = "pending";
+  renderWrongCount(); // could render only when lastIndex was wrong
+  renderCharacter(lastIndex);
 }
 
+// Initial Render
+renderGoalSentence();
+renderEntries();
+
+// UI starting point may put elsewhere
+mistakeModeElement.value = state.mistakeMode;
+mistakeModeElement.addEventListener('change', () => {
+  state.mistakeMode = mistakeModeElement.value as MistakeMode;
+  // update seleteted value in the select element
+  mistakeModeElement.value = state.mistakeMode;
+});
+
+// Keyboard handling
 window.addEventListener('keydown', (event) => {
   const { ctrlKey } = event;
 
